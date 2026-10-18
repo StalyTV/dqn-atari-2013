@@ -1,0 +1,4 @@
+inherit: base_nips2013.yaml
+name: spaceinvaders_dqn2013
+game: SpaceInvaders
+frame_skip: 3                    # [paper] k=3, otherwise the blinking lasers are invisible

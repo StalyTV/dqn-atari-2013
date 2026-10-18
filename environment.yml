@@ -1,0 +1,21 @@
+# Environment for RenkuLab ("Create from code" session launcher) and for local use:
+#   conda env create -f environment.yml && conda activate dqn2013
+# Versions of the environment libraries are pinned because ALE/Gymnasium changes can
+# change game behaviour. Record any change in DEVIATIONS.md.
+name: dqn2013
+channels:
+  - conda-forge
+  - nodefaults
+dependencies:
+  - python=3.11
+  - pip
+  - pip:
+      - torch>=2.2
+      - gymnasium[atari]==1.4.0
+      - ale-py==0.12.1
+      - opencv-python-headless>=4.9
+      - numpy>=1.26
+      - pandas>=2.1
+      - matplotlib>=3.8
+      - pyyaml>=6.0
+      - pytest>=8.0

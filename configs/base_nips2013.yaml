@@ -1,0 +1,45 @@
+# DQN as described in Mnih et al. (2013), "Playing Atari with Deep Reinforcement Learning".
+# Every value says where it comes from:
+#   [paper]      stated in the 2013 paper
+#   [deep_q_rl]  not stated in the paper; taken from Nathan Sprague's deep_q_rl, run_nips.py
+#   [ours]       not stated anywhere we could check; our choice, listed in DEVIATIONS.md
+# Game files (breakout.yaml, space_invaders.yaml) inherit from this file.
+
+name: dqn2013
+game: null                       # set in the game config
+
+# ---- environment ----
+frame_skip: 4                    # [paper] k=4 (k=3 for Space Invaders)
+repeat_action_probability: 0.0   # [paper] deterministic ALE (no sticky actions)
+max_pool_last_two: false         # [paper] no frame max-pooling in 2013 (deep_q_rl does it)
+crop_offset: 8                   # [deep_q_rl] which 84 rows of the 110x84 image to keep
+clip_rewards: true               # [paper] positive +1, negative -1, zero unchanged
+
+# ---- network ----
+network: nips2013                # [paper] conv16 8x8/4, conv32 4x4/2, fc256
+init: torch_default              # [ours] paper gives none; deep_q_rl uses normal_0.01
+
+# ---- learning ----
+total_frames: 10000000           # [paper] 10M frames (we read "frames" as emulator frames)
+batch_size: 32                   # [paper]
+replay_capacity: 1000000         # [paper] last 1M frames (~7 GB RAM)
+learning_starts: 100             # [deep_q_rl] REPLAY_START_SIZE (agent steps)
+update_frequency: 1              # [paper] one minibatch update per agent step
+gamma: 0.95                      # [deep_q_rl] paper does not state the discount
+learning_rate: 0.0002            # [deep_q_rl] paper only says "RMSProp"
+rmsprop_alpha: 0.99              # [deep_q_rl] rho
+rmsprop_eps: 1.0e-6              # [deep_q_rl]
+loss: mse                        # [paper] squared TD error (Huber/error clipping came in 2015)
+target_update_interval: 0        # [paper] 0 = NO target network (introduced only in 2015)
+
+# ---- exploration ----
+epsilon_start: 1.0               # [paper]
+epsilon_end: 0.1                 # [paper]
+epsilon_decay_frames: 1000000    # [paper] "over the first million frames"
+
+# ---- evaluation and logging ----
+eval_every_steps: 50000          # [paper] one epoch = 50k minibatch updates
+eval_steps: 10000                # [paper] Fig. 2: average reward over 10k steps
+epsilon_eval: 0.05               # [paper]
+num_holdout_states: 1000         # [ours] paper does not give the size of the held-out set
+log_every_steps: 10000

@@ -1,0 +1,10 @@
+# Tiny run to check the pipeline end to end (a few minutes on CPU). Not a result.
+inherit: breakout.yaml
+name: smoke_breakout
+total_frames: 40000
+replay_capacity: 20000
+epsilon_decay_frames: 20000
+eval_every_steps: 5000
+eval_steps: 1000
+num_holdout_states: 100
+log_every_steps: 2500

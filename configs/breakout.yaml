@@ -1,0 +1,3 @@
+inherit: base_nips2013.yaml
+name: breakout_dqn2013
+game: Breakout

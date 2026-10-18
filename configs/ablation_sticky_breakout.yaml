@@ -1,0 +1,4 @@
+# Stress test: stochastic ALE with sticky actions (Machado et al. 2018, Gymnasium v5 default).
+inherit: breakout.yaml
+name: breakout_dqn2013_sticky
+repeat_action_probability: 0.25

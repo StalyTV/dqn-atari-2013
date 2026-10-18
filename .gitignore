@@ -1,0 +1,10 @@
+runs/
+figures/
+*.pt
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+.ipynb_checkpoints/
+nohup.out
+logs/
