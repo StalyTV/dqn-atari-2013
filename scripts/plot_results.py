@@ -3,7 +3,7 @@
     python scripts/plot_results.py --runs runs --out figures
 
 Groups runs by the `name` in their config.yaml (e.g. breakout_dqn2013,
-breakout_dqn2013_targetnet), plots mean +- std over seeds of
+spaceinvaders_dqn2013), plots mean +- std over seeds of
   (a) average evaluation return per epoch      (paper Fig. 2, left panels)
   (b) average max Q on the held-out states     (paper Fig. 2, right panels)
 and writes results.md comparing the final numbers with paper Table 1.

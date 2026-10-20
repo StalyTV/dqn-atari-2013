@@ -15,10 +15,6 @@ DQN that most repositories implement. The difference matters: the 2013 agent has
 2. **Stability.** The average max Q on a fixed set of held-out states rises smoothly
    during training while episode reward is noisy, and training did not diverge (paper Fig. 2, Sec. 5.1).
 
-Extensions (separate from the reproduction):
-- **Target-network ablation**: the same agent plus the 2015 target network.
-- **Sticky actions**: stochastic ALE (`repeat_action_probability=0.25`).
-
 ## Repository layout
 
 ```
@@ -26,17 +22,15 @@ configs/
   base_nips2013.yaml        all hyperparameters, each tagged [paper] / [deep_q_rl] / [ours]
   breakout.yaml             game configs (inherit from the base)
   space_invaders.yaml       frame_skip 3, as in the paper
-  ablation_target_net_*.yaml
-  ablation_sticky_*.yaml
   smoke_test.yaml           few-minute end-to-end check
 dqn/
   env.py      ALE wrapper: frame skip, gray-scale, 110x84 resize, 84x84 crop
-  model.py    2013 network (and the 2015 one, only for an optional ablation)
+  model.py    2013 network
   replay.py   memory-efficient replay buffer (frames stored once, stacks built on sampling)
   train.py    training loop, evaluation, held-out Q tracking, logging
   config.py   YAML inheritance and --set overrides
 scripts/
-  run_experiments.sh   runs a block of experiments (repro / targetnet / sticky)
+  run_experiments.sh   runs the reproduction block (both games, several seeds)
   plot_results.py      paper-style figures + results table vs Table 1
 tests/test_basics.py   checks for config, network, preprocessing, replay boundaries
 DEVIATIONS.md          every difference from the paper. Keep it up to date.
@@ -90,8 +84,7 @@ A block of runs (seeds 1-3, both games), surviving a closed browser tab:
 
 ```bash
 mkdir -p logs
-nohup bash scripts/run_experiments.sh repro     > logs/repro.out 2>&1 &
-nohup bash scripts/run_experiments.sh targetnet > logs/targetnet.out 2>&1 &
+nohup bash scripts/run_experiments.sh repro > logs/repro.out 2>&1 &
 tail -f logs/repro.out
 ```
 
@@ -124,11 +117,10 @@ the sweep**, and put the number here.
 
 - RAM: the 1M-frame replay buffer needs about 7 GB per run, plus ~1 GB overhead.
   Request at least 10 GB per concurrent run, or lower `replay_capacity` and log it as a deviation.
-- Planned runs: 2 games x 3 seeds x 3 variants (repro, targetnet, sticky) = 18 runs.
+- Reproduction runs: 2 games x 3 seeds = 6 runs.
 
 ## Team rules
 
 - Change hyperparameters only through configs, never in code, so every run is reproducible from its `config.yaml`.
 - Any difference from the paper goes into `DEVIATIONS.md` in the same commit.
 - Commit before launching a long run: `run_info.json` records the commit hash and marks uncommitted changes as `-dirty`.
-- Keep reproduction runs and extension runs separate (different config names).

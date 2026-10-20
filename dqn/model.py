@@ -1,13 +1,10 @@
-"""Q-networks.
+"""Q-network.
 
 `nips2013`: the architecture of Mnih et al. (2013), Section 5:
   input 4x84x84 -> conv 16 filters 8x8 stride 4, ReLU
                -> conv 32 filters 4x4 stride 2, ReLU
                -> fully connected 256, ReLU
                -> linear output, one Q-value per action
-
-`nature2015`: the larger network of Mnih et al. (2015), kept only for an optional
-architecture ablation. It is NOT part of the reproduction.
 """
 
 from __future__ import annotations
@@ -27,19 +24,6 @@ def build_q_network(name: str, num_actions: int, init: str = "torch_default") ->
             nn.Linear(32 * 9 * 9, 256),
             nn.ReLU(),
             nn.Linear(256, num_actions),
-        )
-    elif name == "nature2015":
-        net = nn.Sequential(
-            nn.Conv2d(4, 32, kernel_size=8, stride=4),
-            nn.ReLU(),
-            nn.Conv2d(32, 64, kernel_size=4, stride=2),
-            nn.ReLU(),
-            nn.Conv2d(64, 64, kernel_size=3, stride=1),
-            nn.ReLU(),
-            nn.Flatten(),
-            nn.Linear(64 * 7 * 7, 512),
-            nn.ReLU(),
-            nn.Linear(512, num_actions),
         )
     else:
         raise ValueError(f"Unknown network '{name}'")

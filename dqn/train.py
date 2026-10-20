@@ -2,7 +2,7 @@
 
 Usage:
     python -m dqn.train --config configs/breakout.yaml --seed 1
-    python -m dqn.train --config configs/ablation_target_net_breakout.yaml --seed 1
+    python -m dqn.train --config configs/space_invaders.yaml --seed 1
     python -m dqn.train --config configs/breakout.yaml --seed 1 --set total_frames=200000
 
 Outputs go to runs/<run_name>/:

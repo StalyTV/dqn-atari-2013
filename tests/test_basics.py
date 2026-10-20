@@ -19,15 +19,12 @@ def test_config_inheritance_and_overrides():
     assert cfg["target_update_interval"] == 0
     cfg = apply_overrides(cfg, ["target_update_interval=10000"])
     assert cfg["target_update_interval"] == 10000
-    abl = load_config("configs/ablation_target_net_breakout.yaml")
-    assert abl["game"] == "Breakout" and abl["target_update_interval"] == 10000
 
 
 def test_network_shapes():
-    for name in ["nips2013", "nature2015"]:
-        net = QNetwork(name, num_actions=6)
-        out = net(torch.zeros(2, 4, 84, 84, dtype=torch.uint8))
-        assert out.shape == (2, 6)
+    net = QNetwork("nips2013", num_actions=6)
+    out = net(torch.zeros(2, 4, 84, 84, dtype=torch.uint8))
+    assert out.shape == (2, 6)
     # 2013 net: 16*4*8*8+16 + 32*16*4*4+32 + 2592*256+256 + 256*6+6
     n = sum(p.numel() for p in QNetwork("nips2013", 6).parameters())
     assert n == 4112 + 8224 + 663808 + 1542
