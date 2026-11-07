@@ -33,7 +33,6 @@ import torch.nn.functional as F
 import yaml
 
 from dqn.config import apply_overrides, load_config
-from dqn.env import AtariEnv
 from dqn.model import QNetwork
 from dqn.replay import STACK, ReplayBuffer
 
@@ -83,7 +82,16 @@ def greedy_action(q_net: QNetwork, stack: np.ndarray, device: torch.device) -> i
     return int(q.argmax(dim=1).item())
 
 
-def make_env(cfg: dict, seed: int) -> AtariEnv:
+def make_env(cfg: dict, seed: int):
+    """Atari (the experiments) or Catch (the pilot, see dqn/catch.py). Same interface."""
+    if cfg.get("env", "atari") == "catch":
+        from dqn.catch import CatchEnv
+
+        return CatchEnv(
+            balls=cfg["catch_balls"], drift=cfg["catch_drift"], frame_skip=cfg["frame_skip"], seed=seed
+        )
+    from dqn.env import AtariEnv  # imported here so the Catch pilot runs without ALE
+
     return AtariEnv(
         game=cfg["game"],
         frame_skip=cfg["frame_skip"],
@@ -113,7 +121,7 @@ def collect_holdout_states(cfg: dict, seed: int, n: int) -> np.ndarray:
     return np.stack([states[i] for i in idx])
 
 
-def evaluate(q_net: QNetwork, env: AtariEnv, cfg: dict, device, rng) -> dict:
+def evaluate(q_net: QNetwork, env, cfg: dict, device, rng) -> dict:
     """Run epsilon-greedy (epsilon_eval) for eval_steps agent steps; report raw scores."""
     q_net.eval()
     returns, current = [], 0.0
@@ -315,8 +323,11 @@ def main(argv: list[str] | None = None) -> None:
 
     with open(run_dir / "config.yaml", "w") as f:
         yaml.safe_dump(cfg, f, sort_keys=False)
-    import ale_py
-    import gymnasium
+    def version(module: str) -> str | None:
+        try:
+            return __import__(module).__version__
+        except ImportError:
+            return None
 
     info = {
         "command": " ".join(sys.argv),
@@ -326,8 +337,8 @@ def main(argv: list[str] | None = None) -> None:
         "gpu": torch.cuda.get_device_name(0) if device.type == "cuda" else None,
         "python": platform.python_version(),
         "torch": torch.__version__,
-        "gymnasium": gymnasium.__version__,
-        "ale_py": ale_py.__version__,
+        "gymnasium": version("gymnasium"),
+        "ale_py": version("ale_py"),
         "numpy": np.__version__,
         "host": platform.node(),
     }

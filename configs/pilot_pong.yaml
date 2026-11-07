@@ -1,0 +1,17 @@
+# Pilot, stage 2: the 2013 DQN on Pong, shortened. Pong is in the paper (Table 1:
+# random -20.4, human -3, DQN 20) and is the easiest of its seven games, so it is the
+# cheapest check that the Atari side (ALE wrapper, preprocessing, frame skip) learns.
+# Run this after the Catch pilot passes. Meant for a GPU (~1-2 h); see README.
+#
+# The agent is the unchanged 2013 setup from base_nips2013.yaml. Changes for the pilot:
+#   total_frames 4M instead of 10M, replay 500k frames instead of 1M (~3.5 GB RAM).
+# Not a result for the report's claims.
+inherit: base_nips2013.yaml
+name: pilot_pong_dqn2013
+game: Pong
+frame_skip: 4                    # [paper]
+
+total_frames: 4000000            # [pilot] 1M agent steps = 20 epochs of 50k updates
+replay_capacity: 500000          # [pilot] half the paper's 1M frames, to fit in less RAM
+eval_steps: 10000                # [paper]
+log_every_steps: 10000

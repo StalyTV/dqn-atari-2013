@@ -23,10 +23,12 @@ import numpy as np
 import pandas as pd
 import yaml
 
-# Mnih et al. (2013), Table 1. Check these against the paper before reporting.
+# Mnih et al. (2013), Table 1 (checked against the arXiv PDF). Note: Random 148 / Human 1652
+# for Space Invaders are the 2015 Nature numbers, NOT the 2013 ones.
 PAPER = {
     "Breakout": {"Random": 1.2, "Sarsa": 5.2, "Contingency": 6, "DQN": 168, "Human": 31, "DQN best": 225},
-    "SpaceInvaders": {"Random": 148, "Sarsa": 271, "Contingency": 268, "DQN": 581, "Human": 1652, "DQN best": 1075},
+    "SpaceInvaders": {"Random": 179, "Sarsa": 271, "Contingency": 268, "DQN": 581, "Human": 3690, "DQN best": 1075},
+    "Pong": {"Random": -20.4, "Sarsa": -19, "Contingency": -17, "DQN": 20, "Human": -3, "DQN best": 21},
 }
 
 

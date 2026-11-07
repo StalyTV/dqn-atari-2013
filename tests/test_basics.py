@@ -71,3 +71,29 @@ def test_replay_wraparound_never_mixes_old_and_new():
         # consecutive frames in a stack differ by exactly 1 (mod 250): no overwritten slot inside
         assert np.all((np.diff(vals, axis=1) % 250) == 1)
         assert np.all((nvals[:, -1] - vals[:, -1]) % 250 == 1)
+
+
+def test_catch_env_interface_and_scores():
+    from dqn.catch import GRID, CatchEnv
+
+    env = CatchEnv(balls=3, drift=True, seed=0)
+    f = env.reset()
+    assert f.shape == (84, 84) and f.dtype == np.uint8
+    # an oracle that follows the ball catches every ball: return = +balls
+    total, done, steps = 0.0, False, 0
+    while not done:
+        target = min(max(env.ball_c - 1, 0), GRID - 3)
+        a = 1 + int(np.sign(target - env.paddle))
+        f, r, done = env.step(a)
+        total += r
+        steps += 1
+        assert f.shape == (84, 84)
+    assert total == 3 and steps == 3 * (GRID - 1)
+    # a paddle parked in a corner misses most balls
+    env = CatchEnv(balls=50, drift=False, seed=1)
+    env.reset()
+    total, done = 0.0, False
+    while not done:
+        _, r, done = env.step(0)
+        total += r
+    assert total < 0

@@ -1,0 +1,24 @@
+# Pilot: the 2013 DQN on Catch (dqn/catch.py), a tiny 84x84 pixel game.
+# Purpose: check that the full pipeline learns before spending Atari compute.
+# Runs on a CPU in minutes. NOT a result for the report's claims.
+#
+# Everything that defines the 2013 agent is inherited unchanged from base_nips2013.yaml:
+# network, NO target network, squared loss, RMSProp lr 0.0002, gamma 0.95, batch 32,
+# one update per step, reward clipping, epsilon 1 -> 0.1 then fixed, eval epsilon 0.05.
+# Only the environment and the scale (lengths, buffer size) are changed.
+inherit: base_nips2013.yaml
+name: pilot_catch_dqn2013
+
+env: catch
+game: Catch
+catch_balls: 5             # one episode = 5 balls; best return +5, random policy about -3.6
+catch_drift: true          # ball drifts sideways and bounces: the agent needs the frame stack
+frame_skip: 1              # Catch moves one cell per step; frames = agent steps here
+
+total_frames: 60000        # 60k agent steps (= 60k updates)
+replay_capacity: 50000
+epsilon_decay_frames: 20000
+eval_every_steps: 5000     # 12 evaluation epochs
+eval_steps: 2000           # about 20 evaluation episodes
+num_holdout_states: 500
+log_every_steps: 5000

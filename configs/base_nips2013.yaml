@@ -9,6 +9,7 @@ name: dqn2013
 game: null                       # set in the game config
 
 # ---- environment ----
+env: atari                       # atari = the experiments; catch = the CPU pilot (configs/pilot_catch.yaml)
 frame_skip: 4                    # [paper] k=4 (k=3 for Space Invaders)
 repeat_action_probability: 0.0   # [paper] deterministic ALE (no sticky actions)
 max_pool_last_two: false         # [paper] no frame max-pooling in 2013 (deep_q_rl does it)

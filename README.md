@@ -11,7 +11,7 @@ DQN that most repositories implement. The difference matters: the 2013 agent has
 
 1. **Scores.** The same architecture and hyperparameters learn Breakout and Space
    Invaders from pixels, beating the 2013 baselines; on Breakout DQN exceeds the
-   human expert (paper Table 1: DQN 168 vs human 31; Space Invaders DQN 581 vs human 1652).
+   human expert (paper Table 1: DQN 168 vs human 31; Space Invaders DQN 581 vs human 3690).
 2. **Stability.** The average max Q on a fixed set of held-out states rises smoothly
    during training while episode reward is noisy, and training did not diverge (paper Fig. 2, Sec. 5.1).
 
@@ -23,8 +23,11 @@ configs/
   breakout.yaml             game configs (inherit from the base)
   space_invaders.yaml       frame_skip 3, as in the paper
   smoke_test.yaml           few-minute end-to-end check
+  pilot_catch.yaml          pilot 1: 2013 agent on Catch, CPU, ~15 min (see TEST.md)
+  pilot_pong.yaml           pilot 2: 2013 agent on Pong, shortened, GPU (see TEST.md)
 dqn/
   env.py      ALE wrapper: frame skip, gray-scale, 110x84 resize, 84x84 crop
+  catch.py    Catch, a tiny 84x84 pixel game for the pilot (same interface as env.py)
   model.py    2013 network
   replay.py   memory-efficient replay buffer (frames stored once, stacks built on sampling)
   train.py    training loop, evaluation, held-out Q tracking, logging
@@ -32,8 +35,10 @@ dqn/
 scripts/
   run_experiments.sh   runs the reproduction block (both games, several seeds)
   plot_results.py      paper-style figures + results table vs Table 1
+  check_pilot.py       PASS/FAIL check for pilot runs
 tests/test_basics.py   checks for config, network, preprocessing, replay boundaries
 DEVIATIONS.md          every difference from the paper. Keep it up to date.
+TEST.md                what the tests and pilots run and check, and their results
 ```
 
 ## Setup
@@ -70,6 +75,16 @@ The Atari ROMs ship with `ale-py`, nothing else to download.
 
 If the GPU driver is older than the CUDA version of the default PyTorch wheel,
 install PyTorch from https://pytorch.org with the matching CUDA version.
+
+## Pilot first
+
+Before any Atari run, validate the pipeline (TA's advice). Details and pass criteria are in `TEST.md`.
+
+```bash
+python -m pytest -q
+mkdir -p logs
+nohup bash scripts/run_experiments.sh pilot_catch > logs/pilot_catch.out 2>&1 &   # CPU, ~15 min per seed
+```
 
 ## Running experiments
 
