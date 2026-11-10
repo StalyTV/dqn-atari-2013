@@ -11,6 +11,12 @@ Outputs go to runs/<run_name>/:
     train_episodes.csv   one row per training episode (raw score)
     eval.csv             one row per evaluation epoch (paper Fig. 2 and Table 1)
     model_latest.pt      network weights after the latest evaluation
+
+Persistent copy (optional): if RESULTS_DIR is set (or --sync-dir is given), the run
+folder is mirrored to <RESULTS_DIR>/runs/<run_name>/ at the start, after every
+evaluation epoch and at the end. Training still writes to the fast local disk; the
+mirror only means a crashed or deleted session loses at most one epoch. On Renku:
+    export RESULTS_DIR=/home/renku/work/<your data-connector mount>/dqn-atari-2013
 """
 
 from __future__ import annotations
@@ -19,7 +25,9 @@ import argparse
 import copy
 import csv
 import json
+import os
 import platform
+import shutil
 import random
 import subprocess
 import sys
@@ -102,6 +110,17 @@ def make_env(cfg: dict, seed: int):
     )
 
 
+def sync_run(run_dir: Path, sync_dir: Path | None) -> None:
+    """Mirror run_dir to sync_dir/runs/<run name>. A failing network drive must never
+    stop training, so errors are reported and otherwise ignored."""
+    if sync_dir is None:
+        return
+    try:
+        shutil.copytree(run_dir, sync_dir / "runs" / run_dir.name, dirs_exist_ok=True)
+    except Exception as e:  # noqa: BLE001
+        print(f"[sync] WARNING: could not copy results to {sync_dir}: {e}", flush=True)
+
+
 # --------------------------------------------------------------------------- evaluation
 
 
@@ -159,7 +178,7 @@ def average_max_q(q_net: QNetwork, states: np.ndarray, device) -> float:
 # --------------------------------------------------------------------------- training
 
 
-def train(cfg: dict, run_dir: Path, device: torch.device) -> None:
+def train(cfg: dict, run_dir: Path, device: torch.device, sync_dir: Path | None = None) -> None:
     seed = cfg["seed"]
     set_seed(seed)
     rng = np.random.default_rng(seed)
@@ -281,6 +300,7 @@ def train(cfg: dict, run_dir: Path, device: torch.device) -> None:
             eval_f.flush()
             episodes_f.flush()
             torch.save(q_net.state_dict(), run_dir / "model_latest.pt")
+            sync_run(run_dir, sync_dir)
             print(
                 f"[eval] epoch {row['epoch']}  mean_return {row['eval_mean_return']:.2f}  "
                 f"max_return {row['eval_max_return']:.1f}  episodes {row['eval_n_episodes']}  "
@@ -292,7 +312,9 @@ def train(cfg: dict, run_dir: Path, device: torch.device) -> None:
     eval_f.close()
     env.close()
     eval_env.close()
-    print(f"Done in {(time.time() - t_start) / 3600:.2f} h. Results in {run_dir}")
+    sync_run(run_dir, sync_dir)
+    print(f"Done in {(time.time() - t_start) / 3600:.2f} h. Results in {run_dir}"
+          + (f" (copy in {sync_dir / 'runs' / run_dir.name})" if sync_dir else ""))
 
 
 # --------------------------------------------------------------------------- entry point
@@ -304,12 +326,22 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--seed", type=int, default=1)
     p.add_argument("--run-name", default=None)
     p.add_argument("--out-dir", default="runs")
+    p.add_argument(
+        "--sync-dir",
+        default=os.environ.get("RESULTS_DIR"),
+        help="persistent folder to mirror results to (default: $RESULTS_DIR; unset = no copy)",
+    )
     p.add_argument("--device", default="auto", help="auto, cpu, cuda, cuda:0, mps ...")
     p.add_argument("--set", nargs="*", default=[], metavar="KEY=VALUE", help="override config keys")
     args = p.parse_args(argv)
 
     cfg = apply_overrides(load_config(args.config), args.set)
     cfg["seed"] = args.seed
+
+    # check the persistent folder before anything is created, so a missing mount fails fast
+    sync_dir = Path(args.sync_dir) if args.sync_dir else None
+    if sync_dir is not None and not sync_dir.parent.exists():
+        sys.exit(f"--sync-dir / RESULTS_DIR: {sync_dir.parent} does not exist. Is the drive mounted?")
 
     if args.device == "auto":
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -345,8 +377,9 @@ def main(argv: list[str] | None = None) -> None:
     with open(run_dir / "run_info.json", "w") as f:
         json.dump(info, f, indent=2)
 
-    print(f"Run dir: {run_dir}\nDevice: {device}")
-    train(cfg, run_dir, device)
+    print(f"Run dir: {run_dir}\nDevice: {device}\nCopy to: {sync_dir or '(none, RESULTS_DIR not set)'}")
+    sync_run(run_dir, sync_dir)
+    train(cfg, run_dir, device, sync_dir)
 
 
 if __name__ == "__main__":

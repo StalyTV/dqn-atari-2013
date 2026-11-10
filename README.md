@@ -119,8 +119,32 @@ python scripts/plot_results.py --runs runs --out figures
 | `eval.csv` | every epoch (50k updates): eval mean/max return (epsilon 0.05), held-out avg max Q, loss |
 | `model_latest.pt` | weights after the latest evaluation |
 
-`runs/` is git-ignored. Share results through the Renku project storage or a
-shared drive, and commit only the final figures and tables.
+`runs/` and `logs/` are git-ignored: commit only final figures and tables.
+
+### Keeping results: `RESULTS_DIR`
+
+A Renku session's disk disappears with the session. Mount a persistent folder (we use
+a SWITCHdrive data connector, read-only switched **off**) and point `RESULTS_DIR` at a
+subfolder of it:
+
+```bash
+export RESULTS_DIR=/home/renku/work/synchronizing/dqn-atari-2013   # adapt to your mount
+bash scripts/run_experiments.sh pilot_catch
+```
+
+Training still writes to the fast local `runs/`; the copy is made on top of that:
+
+```
+$RESULTS_DIR/
+  runs/<run_name>/     mirrored at start, after every evaluation epoch, and at the end
+  logs/<run_name>.log  copied after each run (run_experiments.sh)
+  summaries/           pilot PASS/FAIL output (run_experiments.sh)
+```
+
+A crashed or deleted session loses at most one epoch. If the drive is not mounted, the
+run refuses to start; if a copy fails mid-run, training continues and prints a
+`[sync] WARNING`. `RESULTS_DIR` unset = no copy. `python -m dqn.train ... --sync-dir <dir>`
+does the same for single runs.
 
 ## Compute
 

@@ -133,7 +133,9 @@ and the minimal action set.
 ## How to run on Renku
 
 ```bash
+git pull                              # make sure the session has the latest code
 python -m pytest -q
+export RESULTS_DIR=/home/renku/work/synchronizing/dqn-atari-2013   # persistent copy, see README
 mkdir -p logs
 nohup bash scripts/run_experiments.sh pilot_catch > logs/pilot_catch.out 2>&1 &
 tail -f logs/pilot_catch.out          # ends with the PASS/FAIL summary
@@ -142,6 +144,10 @@ nohup bash scripts/run_experiments.sh pilot_pong > logs/pilot_pong.out 2>&1 &
 ```
 
 Re-check any time: `python scripts/check_pilot.py --glob "runs/pilot_catch_seed*"`.
+The PASS/FAIL summary is also saved in `$RESULTS_DIR/summaries/`.
+
+Note: with `nohup ... &`, `RESULTS_DIR` must be exported in the same terminal *before*
+starting. A new terminal does not inherit it.
 Plots: `python scripts/plot_results.py --runs runs --out figures` (also works for the pilots).
 
 ## What a PASS does and does not tell us

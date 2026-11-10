@@ -60,3 +60,4 @@ reimplementation with an explicit NIPS 2013 configuration
 | 2026-10-18 | Stanley | Initial setup | |
 | 2026-11-07 | Luke | Added Catch/Pong pilots (`TEST.md`), `env` config key, `scripts/check_pilot.py` | TA: validate on a simple setup first. No change to the 2013 agent |
 | 2026-11-07 | Luke | Fixed Space Invaders random/human baselines in `plot_results.py` and README to 179 / 3690 | Were the 2015 Nature values (148 / 1652); now match 2013 Table 1 |
+| 2026-11-10 | Luke | `RESULTS_DIR` / `--sync-dir`: mirror runs, logs and pilot summaries to a persistent drive | Renku session storage is not permanent. No effect on training |
