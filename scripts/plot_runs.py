@@ -84,7 +84,9 @@ def main() -> None:
     p.add_argument("runs", nargs="*", help="run folders")
     p.add_argument("--glob", default=None, help='e.g. "runs/breakout_seed*"')
     p.add_argument("--game", default=None, help="game for the paper lines, if config.yaml is missing")
-    p.add_argument("--out", default=None, help="output PNG (default: figures/<first run>.png)")
+    p.add_argument("--out", default=None, help="output PNG (default: figures/<run name(s)>.png)")
+    p.add_argument("--overwrite", action="store_true",
+                   help="replace an existing figure (default: keep it and write <name>_2.png, _3, ...)")
     args = p.parse_args()
 
     dirs = [Path(r) for r in args.runs] + [Path(r) for r in sorted(glob.glob(args.glob or ""))]
@@ -92,7 +94,14 @@ def main() -> None:
     if not runs:
         sys.exit("No run folders with an eval.csv found.")
     game = args.game or runs[0]["cfg"].get("game")
-    out = Path(args.out) if args.out else Path("figures") / f"{runs[0]['label']}.png"
+    default_name = runs[0]["label"] if len(runs) == 1 else f"{runs[0]['label']}_plus{len(runs) - 1}"
+    out = Path(args.out) if args.out else Path("figures") / f"{default_name}.png"
+    if out.exists() and not args.overwrite:  # never silently replace an earlier figure
+        n = 2
+        while (alt := out.with_name(f"{out.stem}_{n}{out.suffix}")).exists():
+            n += 1
+        print(f"{out} exists, writing {alt} instead (use --overwrite to replace)")
+        out = alt
     out.parent.mkdir(parents=True, exist_ok=True)
 
     fig, axes = plt.subplots(2, 2, figsize=(12, 7.5), sharex=True, facecolor=SURFACE)
