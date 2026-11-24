@@ -44,3 +44,11 @@ eval_steps: 10000                # [paper] Fig. 2: average reward over 10k steps
 epsilon_eval: 0.05               # [paper]
 num_holdout_states: 1000         # [ours] paper does not give the size of the held-out set
 log_every_steps: 10000
+
+# ---- 2015 (Nature) switches: all at their 2013 values here; see base_nature2015.yaml ----
+resize: crop                     # [paper] crop to the playing area; 2015: scale (whole frame)
+noop_max: 0                      # [deep_q_rl] no random starts; 2015: up to 30 NOOP frames
+life_loss_terminal: false        # [deep_q_rl] episode ends only at game over; 2015: life loss (training only)
+optimizer: rmsprop_torch         # [deep_q_rl-like] torch RMSprop; 2015: rmsprop_deepmind (dqn/optim.py)
+loss_reduction: mean             # [ours] mean over the minibatch; 2015 / DQN 3.0: sum
+epsilon_decay_after_learning_starts: false  # 2015 / DQN 3.0: epsilon stays 1 until learning starts

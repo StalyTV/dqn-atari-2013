@@ -21,6 +21,8 @@ DQN that most repositories implement. The difference matters: the 2013 agent has
 configs/
   base_nips2013.yaml        all hyperparameters, each tagged [paper] / [deep_q_rl] / [ours]
   breakout.yaml             game configs (inherit from the base)
+  base_nature2015.yaml      2015 Nature agent (branch 2015-nature), see NATURE2015.md
+  space_invaders_nature2015.yaml, breakout_nature2015.yaml
   space_invaders.yaml       frame_skip 3, as in the paper
   smoke_test.yaml           few-minute end-to-end check
   pilot_catch.yaml          pilot 1: 2013 agent on Catch, CPU, ~15 min (see TEST.md)
@@ -29,6 +31,7 @@ dqn/
   env.py      ALE wrapper: frame skip, gray-scale, 110x84 resize, 84x84 crop
   catch.py    Catch, a tiny 84x84 pixel game for the pilot (same interface as env.py)
   model.py    2013 network
+  optim.py    DeepMind's centered RMSProp (2015)
   replay.py   memory-efficient replay buffer (frames stored once, stacks built on sampling)
   train.py    training loop, evaluation, held-out Q tracking, logging
   config.py   YAML inheritance and --set overrides
@@ -39,6 +42,7 @@ scripts/
 tests/test_basics.py   checks for config, network, preprocessing, replay boundaries
 DEVIATIONS.md          every difference from the paper. Keep it up to date.
 TEST.md                what the tests and pilots run and check, and their results
+NATURE2015.md          2015 agent: components, sources, deviations, ablation plan
 ```
 
 ## Setup

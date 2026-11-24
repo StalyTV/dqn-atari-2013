@@ -1,0 +1,3 @@
+inherit: base_nature2015.yaml
+name: breakout_nature2015
+game: Breakout

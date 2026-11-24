@@ -97,3 +97,61 @@ def test_catch_env_interface_and_scores():
         _, r, done = env.step(0)
         total += r
     assert total < 0
+
+
+# ---------------------------------------------------------------- 2015 (Nature) components
+
+
+def test_nature2015_network_shape_and_size():
+    net = QNetwork("nature2015", num_actions=6)
+    out = net(torch.zeros(2, 4, 84, 84, dtype=torch.uint8))
+    assert out.shape == (2, 6)
+    # 32x8x8/4, 64x4x4/2, 64x3x3/1, fc 512 (Mnih et al. 2015, DQN 3.0 convnet_atari3.lua)
+    n = sum(p.numel() for p in net.parameters())
+    assert n == (4 * 32 * 64 + 32) + (32 * 64 * 16 + 64) + (64 * 64 * 9 + 64) + (3136 * 512 + 512) + (512 * 6 + 6)
+
+
+def test_scale_preprocessing_gives_84x84():
+    from dqn.env import preprocess
+
+    f = np.random.default_rng(0).integers(0, 255, size=(210, 160), dtype=np.uint8)
+    assert preprocess(f, 8, "scale").shape == (84, 84)
+    assert preprocess(f, 8, "crop").shape == (84, 84)
+
+
+def test_deepmind_rmsprop_matches_dqn3_formula():
+    from dqn.optim import DeepMindRMSprop
+
+    w = torch.nn.Parameter(torch.tensor([1.0, -2.0]))
+    opt = DeepMindRMSprop([w], lr=0.1, alpha=0.95, eps=0.01)
+    grad = torch.tensor([0.5, -1.0])
+    w.grad = grad.clone()
+    opt.step()
+    g, g2 = 0.05 * grad, 0.05 * grad**2
+    expected = torch.tensor([1.0, -2.0]) - 0.1 * grad / torch.sqrt(g2 - g**2 + 0.01)
+    assert torch.allclose(w.detach(), expected)
+
+
+def test_life_loss_is_reported_and_game_continues():
+    from dqn.env import AtariEnv
+
+    env = AtariEnv("SpaceInvaders", 4, resize="scale", noop_max=30, max_pool_last_two=True,
+                   seed=0, break_on_life_loss=True)
+    env.reset()
+    lives0 = env.lives
+    rng = np.random.default_rng(0)
+    for _ in range(5000):
+        f, r, done = env.step(int(rng.integers(env.num_actions)))
+        if env.life_lost or done:
+            break
+    assert env.life_lost and not done and env.lives == lives0 - 1
+    f = env.noop_start()  # same game continues after random NOOPs
+    assert f.shape == (84, 84) and env.lives == lives0 - 1
+
+
+def test_2013_configs_unchanged_by_2015_switches():
+    for name in ["breakout", "space_invaders"]:
+        cfg = load_config(f"configs/{name}.yaml")
+        assert cfg["resize"] == "crop" and cfg["noop_max"] == 0 and not cfg["life_loss_terminal"]
+        assert cfg["optimizer"] == "rmsprop_torch" and cfg["loss_reduction"] == "mean"
+        assert cfg["update_frequency"] == 1 and cfg["target_update_interval"] == 0

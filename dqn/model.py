@@ -25,6 +25,20 @@ def build_q_network(name: str, num_actions: int, init: str = "torch_default") ->
             nn.ReLU(),
             nn.Linear(256, num_actions),
         )
+    elif name == "nature2015":
+        # Mnih et al. (2015) / DQN 3.0 convnet_atari3.lua: 32x8x8/4, 64x4x4/2, 64x3x3/1, fc 512
+        net = nn.Sequential(
+            nn.Conv2d(4, 32, kernel_size=8, stride=4),
+            nn.ReLU(),
+            nn.Conv2d(32, 64, kernel_size=4, stride=2),
+            nn.ReLU(),
+            nn.Conv2d(64, 64, kernel_size=3, stride=1),
+            nn.ReLU(),
+            nn.Flatten(),
+            nn.Linear(64 * 7 * 7, 512),
+            nn.ReLU(),
+            nn.Linear(512, num_actions),
+        )
     else:
         raise ValueError(f"Unknown network '{name}'")
 

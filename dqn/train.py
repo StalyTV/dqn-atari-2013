@@ -42,6 +42,7 @@ import yaml
 
 from dqn.config import apply_overrides, load_config
 from dqn.model import QNetwork
+from dqn.optim import DeepMindRMSprop
 from dqn.replay import STACK, ReplayBuffer
 
 
@@ -90,7 +91,7 @@ def greedy_action(q_net: QNetwork, stack: np.ndarray, device: torch.device) -> i
     return int(q.argmax(dim=1).item())
 
 
-def make_env(cfg: dict, seed: int):
+def make_env(cfg: dict, seed: int, training: bool = False):
     """Atari (the experiments) or Catch (the pilot, see dqn/catch.py). Same interface."""
     if cfg.get("env", "atari") == "catch":
         from dqn.catch import CatchEnv
@@ -107,7 +108,24 @@ def make_env(cfg: dict, seed: int):
         max_pool_last_two=cfg["max_pool_last_two"],
         crop_offset=cfg["crop_offset"],
         seed=seed,
+        resize=cfg.get("resize", "crop"),
+        noop_max=cfg.get("noop_max", 0),
+        # DQN 3.0: a life loss ends the action repeat only in training, where it is terminal
+        break_on_life_loss=training and cfg.get("life_loss_terminal", False),
     )
+
+
+def make_optimizer(cfg: dict, params):
+    """2013 setup: torch RMSprop. 2015 setup: DeepMind's centered RMSProp (dqn/optim.py)."""
+    kind = cfg.get("optimizer", "rmsprop_torch")
+    if kind == "rmsprop_torch":
+        return torch.optim.RMSprop(
+            params, lr=cfg["learning_rate"], alpha=cfg["rmsprop_alpha"], eps=cfg["rmsprop_eps"],
+            momentum=0.0, centered=False,
+        )
+    if kind == "rmsprop_deepmind":
+        return DeepMindRMSprop(params, lr=cfg["learning_rate"], alpha=cfg["rmsprop_alpha"], eps=cfg["rmsprop_eps"])
+    raise ValueError(f"Unknown optimizer '{kind}'")
 
 
 def sync_run(run_dir: Path, sync_dir: Path | None) -> None:
@@ -183,21 +201,17 @@ def train(cfg: dict, run_dir: Path, device: torch.device, sync_dir: Path | None 
     set_seed(seed)
     rng = np.random.default_rng(seed)
 
-    env = make_env(cfg, seed)
+    env = make_env(cfg, seed, training=True)
     eval_env = make_env(cfg, seed + 10_000)
     num_actions = env.num_actions
 
     q_net = QNetwork(cfg["network"], num_actions, cfg["init"]).to(device)
     use_target = cfg["target_update_interval"] > 0
     target_net = copy.deepcopy(q_net) if use_target else q_net
-    optimizer = torch.optim.RMSprop(
-        q_net.parameters(),
-        lr=cfg["learning_rate"],
-        alpha=cfg["rmsprop_alpha"],
-        eps=cfg["rmsprop_eps"],
-        momentum=0.0,
-        centered=False,
-    )
+    optimizer = make_optimizer(cfg, q_net.parameters())
+    life_loss_terminal = cfg.get("life_loss_terminal", False)
+    loss_reduction = cfg.get("loss_reduction", "mean")
+    eps_after_start = cfg.get("epsilon_decay_after_learning_starts", False)
     replay = ReplayBuffer(cfg["replay_capacity"], seed=seed)
     holdout = collect_holdout_states(cfg, seed + 20_000, cfg["num_holdout_states"])
 
@@ -217,7 +231,9 @@ def train(cfg: dict, run_dir: Path, device: torch.device, sync_dir: Path | None 
 
     for step in range(1, total_steps + 1):
         frames = step * cfg["frame_skip"]
-        eps = epsilon_at(frames, cfg)
+        # DQN 3.0 keeps epsilon at 1 until learning starts and anneals from there
+        eps_steps = max(0, step - cfg["learning_starts"]) if eps_after_start else step
+        eps = epsilon_at(eps_steps * cfg["frame_skip"], cfg)
 
         # act (epsilon-greedy)
         if rng.random() < eps:
@@ -226,17 +242,24 @@ def train(cfg: dict, run_dir: Path, device: torch.device, sync_dir: Path | None 
             action = greedy_action(q_net, stack, device)
         next_frame, reward, done = env.step(action)
         clipped = float(np.sign(reward)) if cfg["clip_rewards"] else reward
-        replay.add(stack[-1], action, clipped, done)
+        # 2015 / DQN 3.0: in training a lost life is terminal for the Q-update (no bootstrap
+        # past it, new frame stack), but the game itself continues. Logged returns stay per game.
+        lost_life = life_loss_terminal and getattr(env, "life_lost", False) and not done
+        replay.add(stack[-1], action, clipped, done or lost_life)
         ep_return += reward
         ep_len += 1
 
+        if lost_life:
+            stack = new_stack(env.noop_start())
+            if getattr(env, "reset_during_noops", False):  # game ended during the NOOPs
+                done = True
         if done:
             episode += 1
             ep_writer.writerow([episode, step, frames, ep_return, ep_len, round(eps, 4)])
             recent_returns.append(ep_return)
             ep_return, ep_len = 0.0, 0
             stack = new_stack(env.reset())
-        else:
+        elif not lost_life:
             stack = push_frame(stack, next_frame)
 
         # learn
@@ -254,15 +277,17 @@ def train(cfg: dict, run_dir: Path, device: torch.device, sync_dir: Path | None 
                 next_q = target_net(nxt).max(dim=1).values
                 y = rew + cfg["gamma"] * (1.0 - dn) * next_q
             if cfg["loss"] == "mse":
-                loss = 0.5 * F.mse_loss(q, y)
-            elif cfg["loss"] == "huber":
-                loss = F.smooth_l1_loss(q, y)
+                per_sample = 0.5 * (q - y) ** 2
+            elif cfg["loss"] == "huber":  # gradient = TD error clipped to [-1, 1] (2015 "error clipping")
+                per_sample = F.smooth_l1_loss(q, y, reduction="none")
             else:
                 raise ValueError(cfg["loss"])
+            # 2015 / DQN 3.0 sums the gradient over the minibatch; 2013 code here averages it
+            loss = per_sample.sum() if loss_reduction == "sum" else per_sample.mean()
             optimizer.zero_grad(set_to_none=True)
             loss.backward()
             optimizer.step()
-            losses.append(loss.item())
+            losses.append(per_sample.mean().item())  # logged as a per-sample mean either way
 
         if use_target and step % cfg["target_update_interval"] == 0:
             target_net.load_state_dict(q_net.state_dict())

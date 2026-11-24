@@ -1,0 +1,51 @@
+# DQN as in Mnih et al. (2015), "Human-level control through deep reinforcement learning".
+# Values from Extended Data Table 1 and the Methods of the paper; where the paper is not
+# specific, from DeepMind's own code DQN 3.0 (github.com/google-deepmind/dqn: run_gpu,
+# NeuralQLearner.lua, alewrap GameEnvironment.lua). Tags: [paper2015] / [dqn3] / [ours].
+#
+# Purpose: start from the full 2015 agent and switch its components back one at a time
+# (ablations with --set) to find which change makes Space Invaders learn. Inherits the 2013
+# base so every key exists and every override below is an explicit 2015 difference.
+inherit: base_nips2013.yaml
+name: nature2015
+
+# ---- environment ----
+frame_skip: 4                    # [paper2015] action repeat 4 for ALL games (no k=3 for Space Invaders)
+max_pool_last_two: true          # [paper2015] max over the last two frames (flicker)
+resize: scale                    # [dqn3] whole 210x160 frame scaled to 84x84 (Scale(84,84)), no crop
+noop_max: 30                     # [paper2015] up to 30 "do nothing" actions at episode start (eval too)
+life_loss_terminal: true         # [paper2015 Methods, dqn3] lost life = terminal in training; game continues
+
+# ---- network ----
+network: nature2015              # [paper2015] conv 32x8x8/4, 64x4x4/2, 64x3x3/1, fc 512
+init: torch_default              # [ours] close to Torch7's default uniform(+-1/sqrt(fan_in)) used by dqn3
+
+# ---- learning ----
+gamma: 0.99                      # [paper2015]
+learning_rate: 0.00025           # [paper2015]
+optimizer: rmsprop_deepmind      # [paper2015, dqn3] centered RMSProp, see dqn/optim.py
+rmsprop_alpha: 0.95              # [paper2015] gradient / squared gradient momentum
+rmsprop_eps: 0.01                # [paper2015] min squared gradient, added inside the sqrt
+loss: huber                      # [paper2015] error clipping: TD error clipped to [-1, 1]
+loss_reduction: sum              # [dqn3] gradient summed over the 32 samples
+update_frequency: 4              # [paper2015] one update every 4 agent steps
+target_update_interval: 10000    # [dqn3] every 10,000 AGENT STEPS (= 2,500 updates). Paper ED Table 1
+                                 #   says 10,000 parameter updates; DQN 3.0 counts steps. See NATURE2015.md
+learning_starts: 50000           # [paper2015] replay start size: 50k random steps before learning
+replay_capacity: 1000000         # [paper2015]
+batch_size: 32                   # [paper2015]
+
+# ---- exploration ----
+epsilon_start: 1.0               # [paper2015]
+epsilon_end: 0.1                 # [paper2015]
+epsilon_decay_frames: 4000000    # [paper2015] over 1M agent steps (x frame_skip 4 here)
+epsilon_decay_after_learning_starts: true  # [dqn3] epsilon stays 1 for the 50k random steps
+
+# ---- length ----
+# The paper trains 50M agent steps (200M emulator frames) - far beyond our job deadline.
+# Default here: 10M agent steps, the length of the paper's own ablation (ED Table 3, "10 million
+# frames", which in the 2015 paper's usage are agent steps).
+total_frames: 40000000           # [ours] 10M agent steps x frame_skip 4
+
+# evaluation: our 2013 protocol is kept (epsilon 0.05, 10k steps every 50k steps) so curves are
+# comparable with the 2013 runs. dqn3 evaluates 125k steps every 250k steps.
